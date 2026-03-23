@@ -3,7 +3,7 @@ import ollama
 
 # Set up the page layout
 st.set_page_config(page_title="Offline AI", page_icon="🤖")
-st.title("Juno")
+st.title("KOKO")
 
 # 1. Initialize the session state to store our conversation history
 if "messages" not in st.session_state:
