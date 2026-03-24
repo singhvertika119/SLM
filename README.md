@@ -14,4 +14,6 @@ This repository contains three decoupled components that all interface with a ce
 - **Structured JSON Extraction:** Uses Schema-Guided Generation to force the LLM to output valid JSON matching exact data models.
 - **Asynchronous Inference:** Prevents blocking the main thread during heavy token generation.
 - **Self-Correcting Retry Loop:** Gracefully catches LLM hallucinations and feeds errors back into the prompt for self-correction.
-<img width="900" height="900" alt="image" src="https://github.com/user-attachments/assets/eeec1894-c0da-4988-816a-0ae51e6507fb" />
+<img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/eeec1894-c0da-4988-816a-0ae51e6507fb" />
+<img width="500" height="500" alt="Screenshot 2026-03-24 203019" src="https://github.com/user-attachments/assets/485bbbae-e559-406f-9206-7036dc70f720" />
+
