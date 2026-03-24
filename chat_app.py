@@ -4,7 +4,7 @@ import ollama
 st.set_page_config(page_title="Local  AI", page_icon="👁️")
 st.title("KOKO")
 
-# 1. Add a file uploader to the sidebar
+# Add a file uploader to the sidebar
 with st.sidebar:
     st.header("Visual Input")
     uploaded_file = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
@@ -14,7 +14,7 @@ with st.sidebar:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 2. Render the chat history (including images from past messages)
+# Render the chat history 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -22,7 +22,7 @@ for message in st.session_state.messages:
         if "images" in message and message["images"]:
             st.image(message["images"][0], width=300) 
 
-# 3. Handle new user input
+# Handle new user input
 if prompt := st.chat_input("Ask a question about the image, or just chat..."):
     
     # Construct the base message
@@ -41,10 +41,9 @@ if prompt := st.chat_input("Ask a question about the image, or just chat..."):
         if uploaded_file is not None:
             st.image(uploaded_file, width=300)
 
-    # 4. Generate the multimodal response
+    # Generate the response
     with st.chat_message("assistant"):
         with st.spinner("Analyzing pixels and text..."):
-            # Ensure we are calling the vision model!
             response = ollama.chat(model='moondream', messages=st.session_state.messages)
             
             bot_reply = response['message']['content']

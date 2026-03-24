@@ -2,7 +2,7 @@ import ollama
 import time
 
 def run_benchmark(prompt: str, temperatures: list):
-    print(f"--- Starting Benchmark for Llama 3.2 (3B) ---")
+    print(f"Starting Benchmark for Llama 3.2 (3B)")
     print(f"Prompt: '{prompt}'\n")
     
     client = ollama.Client() 
