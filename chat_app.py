@@ -48,16 +48,14 @@ def query_local_db(sql_query: str) -> str:
     """
     raw_input = str(sql_query)
     
-    # --- UPGRADED REGEX ARMOR ---
     # Starts at SELECT, grabs everything until it hits a double-quote or curly brace
-    # at the very end of the JSON wrapper, safely ignoring the single quotes inside the SQL!
+    # at the very end of the JSON wrapper, safely ignoring the single quotes inside the SQL
     match = re.search(r"(SELECT\s+.*?(?=\"|\}|$))", raw_input, re.IGNORECASE)
     
     if match:
         clean_query = match.group(1).strip()
     else:
         clean_query = raw_input.replace('```sql', '').replace('```', '').strip()
-    # -----------------------------
 
     if not clean_query.lower().startswith('select'):
         return f"Error: Could not find a valid SELECT query. I saw: {raw_input}"
@@ -74,7 +72,7 @@ def query_local_db(sql_query: str) -> str:
             
         return f"Database results: {rows}"
     except sqlite3.Error as e:
-        # Debugging upgrade: Show us exactly what string caused the error!
+        # Show exactly what string caused the error
         return f"SQL Error: {str(e)} | Query Attempted: [{clean_query}]"
 
 # Register the new tool alongside the OS monitor
@@ -84,7 +82,7 @@ available_tools = {
 }
 
 
-# --- 2. Initialize State & System Prompt ---
+# Initialize State & System Prompt 
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -100,7 +98,7 @@ if "messages" not in st.session_state:
         }
     ]
 
-# Sidebar for Vision ---
+# Sidebar for Vision
 with st.sidebar:
     st.header("Visual Input")
     uploaded_file = st.file_uploader("Upload an image (Uses Moondream)", type=["png", "jpg", "jpeg"])
@@ -108,7 +106,7 @@ with st.sidebar:
         st.image(uploaded_file, caption="Ready for analysis")
 
 # Render Chat History
-# We skip rendering 'system' and 'tool' messages so the UI stays clean,
+# skip rendering 'system' and 'tool' messages so the UI stays clean,
 # but they remain in session_state so the AI can read them.
 for message in st.session_state.messages:
     if message["role"] in ["system", "tool"]:
@@ -145,7 +143,7 @@ if prompt := st.chat_input("Ask about your RAM, upload an image, or just chat...
         # Create a visual "Thinking" container
         with st.status("Thinking...", expanded=True) as status:
             
-            # --- INTENT ROUTER (The Hybrid Bouncer) ---
+            # INTENT ROUTER (The Hybrid Bouncer) 
             tools_to_pass = None
             if model_to_use == 'llama3.2':
                 status.update(label="Classifying intent...", state="running")
@@ -160,25 +158,23 @@ if prompt := st.chat_input("Ask about your RAM, upload an image, or just chat...
                 # Check for Database Intent
                 elif any(word in user_text for word in ['inventory', 'stock', 'price', 'database', 'items', 'how many']):
                     st.write("🗄️ Intent: Database query. Triggering XML SQL Engine.")
-                    # THE FIX: We MUST keep tools locked here! 
-                    # If we pass the tool object, Ollama forces JSON and ruins our XML strategy.
+                    # We MUST keep tools locked here
+                    # If we pass the tool object, Ollama forces JSON and ruins XML strategy.
                     tools_to_pass = None 
                     
                 else:
                     st.write("💬 Intent: General chat. Tools locked.")
-            # -----------------------------------
-            # -----------------------------------
-            # Step 1: Initial Inference
+            # Initial Inference
             response = ollama.chat(
                 model=model_to_use, 
                 messages=st.session_state.messages,
                 tools=tools_to_pass 
             )
             
-            # --- THE XML TAG SNIPER ---
+            # THE XML TAG SNIPER
             bot_text = response['message'].get('content', '')
             
-            # If the model wrote <SQL> tags in the chat, we intercept it!
+            # If the model wrote <SQL> tags in the chat, intercept it!
             if '<SQL>' in bot_text.upper():
                 st.write("🔧 Snipping SQL from XML tags...")
                 
@@ -204,12 +200,10 @@ if prompt := st.chat_input("Ask about your RAM, upload an image, or just chat...
                     response['message']['content'] = ""
                     # Ensure the broken JSON tool_calls array is empty
                     response['message']['tool_calls'] = []
-            # --------------------------
             
-            # --- THE "SILENCER" FIX (Kept for the Hardware Tool) ---
+            # THE "SILENCER" FIX (Kept for the Hardware Tool) 
             elif response['message'].get('tool_calls'):
                 response['message']['content'] = ""
-            # --------------------------
             
             st.session_state.messages.append(response['message'])
             

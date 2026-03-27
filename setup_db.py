@@ -15,7 +15,7 @@ def create_database():
         )
     ''')
 
-    # Clear old data if you run this multiple times
+    # Clears old data if ran multiple times
     cursor.execute('DELETE FROM inventory')
 
     # Insert some dummy hardware stock
