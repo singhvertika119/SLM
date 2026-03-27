@@ -21,4 +21,6 @@ This project goes beyond basic API wrappers by implementing deterministic intent
 * **Text-to-SQL Engine (XML Tag Sniper):** Bypasses fragile JSON tool-calling schemas by forcing the LLM to write SQL within `<SQL>` tags. A Python regex sniper extracts the code, runs it against a local SQLite database, and returns the natural language result.
 <img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/eeec1894-c0da-4988-816a-0ae51e6507fb" />
 <img width="500" height="500" alt="Screenshot 2026-03-24 203019" src="https://github.com/user-attachments/assets/485bbbae-e559-406f-9206-7036dc70f720" />
+<img width="500" height="500" alt="Screenshot 2026-03-27 162528" src="https://github.com/user-attachments/assets/142d8da3-3fdf-42af-8f0e-eb7385b795ce" />
+
 
