@@ -2,6 +2,8 @@ import streamlit as st
 import ollama
 import psutil
 import json
+import sqlite3
+import re
 
 st.set_page_config(page_title="Local Agent", page_icon="🙈")
 st.title("KOKO")
@@ -36,19 +38,64 @@ def get_system_stats(metric: str = "all") -> str:
     # If it passes a schema dict, asks for "ram and cpu", or panics,
     # just return all the hardware data and let the LLM filter it for the user
     return f"CPU usage is at {cpu_usage}%. RAM usage is at {ram.percent}% (Used: {used_gb} GB / Total: {total_gb} GB). {batt_str}"
-available_tools = {'get_system_stats': get_system_stats}
 
-# Initialize State & System Prompt
+def query_local_db(sql_query: str) -> str:
+    """
+    Query the local inventory database.
+    
+    Args:
+        sql_query: The SQL SELECT command.
+    """
+    raw_input = str(sql_query)
+    
+    # --- UPGRADED REGEX ARMOR ---
+    # Starts at SELECT, grabs everything until it hits a double-quote or curly brace
+    # at the very end of the JSON wrapper, safely ignoring the single quotes inside the SQL!
+    match = re.search(r"(SELECT\s+.*?(?=\"|\}|$))", raw_input, re.IGNORECASE)
+    
+    if match:
+        clean_query = match.group(1).strip()
+    else:
+        clean_query = raw_input.replace('```sql', '').replace('```', '').strip()
+    # -----------------------------
+
+    if not clean_query.lower().startswith('select'):
+        return f"Error: Could not find a valid SELECT query. I saw: {raw_input}"
+
+    try:
+        conn = sqlite3.connect('inventory.db')
+        cursor = conn.cursor()
+        cursor.execute(clean_query)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return "No results found for that item."
+            
+        return f"Database results: {rows}"
+    except sqlite3.Error as e:
+        # Debugging upgrade: Show us exactly what string caused the error!
+        return f"SQL Error: {str(e)} | Query Attempted: [{clean_query}]"
+
+# Register the new tool alongside the OS monitor
+available_tools = {
+    'get_system_stats': get_system_stats,
+    'query_local_db': query_local_db
+}
+
+
+# --- 2. Initialize State & System Prompt ---
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
             'role': 'system', 
             'content': (
-                "You are a helpful AI assistant running locally on the user's hardware. "
+                "You are an advanced local AI assistant. "
+                "DATABASE SCHEMA: You have access to an SQLite database with a table named 'inventory'. "
+                "Columns: id (INTEGER), item_name (TEXT), quantity (INTEGER), price (REAL). "
                 "CRITICAL RULES: "
-                "1. ONLY use your system tools if the user EXPLICITLY asks about their hardware (RAM, CPU, battery). "
-                "2. If the user asks a general knowledge question or just wants to chat, DO NOT use any tools. Answer normally based on your training data. "
-                "3. When you DO use a tool, you must use the EXACT numbers provided. Do not invent details."
+                "1. When asked about stock or prices, DO NOT use JSON tools. Write a valid SQL SELECT statement wrapped exactly in <SQL> and </SQL> tags. "
+                "2. Always use the LIKE operator with % wildcards for text searches (e.g., WHERE item_name LIKE '%Samsung%'). Do not use exact = matches."
             )
         }
     ]
@@ -98,34 +145,71 @@ if prompt := st.chat_input("Ask about your RAM, upload an image, or just chat...
         # Create a visual "Thinking" container
         with st.status("Thinking...", expanded=True) as status:
             
-            # INTENT ROUTER (The Deterministic Bouncer)
+            # --- INTENT ROUTER (The Hybrid Bouncer) ---
             tools_to_pass = None
             if model_to_use == 'llama3.2':
                 status.update(label="Classifying intent...", state="running")
                 
-                # We abandon the LLM for routing and use 100% reliable Python logic
-                hardware_keywords = ['ram', 'cpu', 'battery', 'memory', 'hardware', 'system']
-                is_hardware = any(word in prompt.lower() for word in hardware_keywords)
+                user_text = prompt.lower()
                 
-                if is_hardware:
-                    st.write("🔍 Intent: Hardware query detected by keyword. Unlocking tools.")
+                # Check for Hardware Intent
+                if any(word in user_text for word in ['ram', 'cpu', 'battery']):
+                    st.write("🔍 Intent: Hardware query. Unlocking System Monitor.")
                     tools_to_pass = [available_tools['get_system_stats']]
+                    
+                # Check for Database Intent
+                elif any(word in user_text for word in ['inventory', 'stock', 'price', 'database', 'items', 'how many']):
+                    st.write("🗄️ Intent: Database query. Triggering XML SQL Engine.")
+                    # THE FIX: We MUST keep tools locked here! 
+                    # If we pass the tool object, Ollama forces JSON and ruins our XML strategy.
+                    tools_to_pass = None 
+                    
                 else:
-                    st.write("💬 Intent: General chat detected. Tools locked.")
-            
-            status.update(label="Generating response...", state="running")
-
-            # Initial Inference
+                    st.write("💬 Intent: General chat. Tools locked.")
+            # -----------------------------------
+            # -----------------------------------
+            # Step 1: Initial Inference
             response = ollama.chat(
                 model=model_to_use, 
                 messages=st.session_state.messages,
                 tools=tools_to_pass 
             )
             
-            # If the model triggers a tool, we wipe any text it tries to yap out.
-            # This prevents it from polluting the chat history with hallucinations like "type php".
-            if response['message'].get('tool_calls'):
+            # --- THE XML TAG SNIPER ---
+            bot_text = response['message'].get('content', '')
+            
+            # If the model wrote <SQL> tags in the chat, we intercept it!
+            if '<SQL>' in bot_text.upper():
+                st.write("🔧 Snipping SQL from XML tags...")
+                
+                # Extract everything between <SQL> and </SQL>
+                match = re.search(r"<SQL>(.*?)</SQL>", bot_text, re.IGNORECASE | re.DOTALL)
+                
+                if match:
+                    extracted_sql = match.group(1).strip()
+                    st.write(f"⚙️ Running DB Query: `{extracted_sql}`")
+                    
+                    # Run the database function directly
+                    db_result = query_local_db(extracted_sql)
+                    st.write(f"📊 Result: {db_result}")
+                    
+                    # Feed the result back into the LLM's memory as a tool response
+                    st.session_state.messages.append({
+                        'role': 'tool', 
+                        'content': str(db_result), 
+                        'name': 'query_local_db'
+                    })
+                    
+                    # Wipe the SQL tags from the UI so it looks clean
+                    response['message']['content'] = ""
+                    # Ensure the broken JSON tool_calls array is empty
+                    response['message']['tool_calls'] = []
+            # --------------------------
+            
+            # --- THE "SILENCER" FIX (Kept for the Hardware Tool) ---
+            elif response['message'].get('tool_calls'):
                 response['message']['content'] = ""
+            # --------------------------
             
             st.session_state.messages.append(response['message'])
             
