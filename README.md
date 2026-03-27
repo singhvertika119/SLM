@@ -1,19 +1,24 @@
-# KOKO- Local Offline AI Engine & Multimodal Assistant
+# KOKO- Local Offline AI Engine & Multimodal AI Agent
 
-A production-grade, 100% offline AI architecture built with Python. This project utilizes Ollama for local LLM inference, FastAPI for an asynchronous API gateway with strict structured output parsing, and Streamlit for a stateful multimodal chat interface. 
+A 100% local, privacy-first AI assistant capable of multimodal vision, live system monitoring, and Text-to-SQL database querying. Built with Streamlit, Ollama, and defensive Python engineering.
 
-## 🏗️ Architecture Overview
-This repository contains three decoupled components that all interface with a central local inference engine:
-1. **API Gateway (`main.py`)**: An async FastAPI backend that enforces strict Pydantic JSON schemas on LLM outputs using Structured Decoding.
-2. **Multimodal Chat UI (`chat_app.py`)**: A Streamlit frontend that maintains conversational memory and handles image ingestion for Vision-Language processing.
-3. **Diagnostics (`benchmark.py`)**: A standalone script to measure model Tokens Per Second (TPS) and test temperature variances.
+This project goes beyond basic API wrappers by implementing deterministic intent routing, tool-calling loops, and regex-based output parsing to wrangle Small Language Models (SLMs) and prevent hallucinations. 
 
-## 🚀 Features
-- **Zero Cloud Dependency:** Runs entirely on local hardware. No API keys, no internet required, and 100% data privacy.
-- **Multimodal Computer Vision:** Integrates `moondream`, a highly optimized 1.7GB Vision-Language Model (VLM), allowing the assistant to analyze and reason about local images.
-- **Structured JSON Extraction:** Uses Schema-Guided Generation to force the LLM to output valid JSON matching exact data models.
-- **Asynchronous Inference:** Prevents blocking the main thread during heavy token generation.
-- **Self-Correcting Retry Loop:** Gracefully catches LLM hallucinations and feeds errors back into the prompt for self-correction.
+## 🧠 Architecture Stack
+
+* **Frontend:** Streamlit
+* **LLM Backend:** Ollama
+* **Core Logic Model:** `llama3.2` (3B Parameters)
+* **Vision Model:** `moondream` (1.8B Parameters)
+* **System Tools:** `psutil`, `sqlite3`, `re` (Regex)
+
+## ✨ Key Features
+
+* **100% Offline & Private:** Powered entirely by local models running via Ollama. No data ever leaves your machine.
+* **Multimodal Vision Router:** Automatically detects image uploads and routes the prompt to the `moondream` Vision-Language Model for analysis.
+* **Deterministic Intent Routing (The Bouncer):** Uses zero-latency Python keyword matching to bypass LLM routing hallucinations, securely locking or unlocking system tools based on user intent.
+* **Live System Monitor:** Intercepts hardware queries to execute local `psutil` commands, feeding real-time CPU, RAM, and Battery data back into the LLM's context window.
+* **Text-to-SQL Engine (XML Tag Sniper):** Bypasses fragile JSON tool-calling schemas by forcing the LLM to write SQL within `<SQL>` tags. A Python regex sniper extracts the code, runs it against a local SQLite database, and returns the natural language result.
 <img width="500" height="500" alt="image" src="https://github.com/user-attachments/assets/eeec1894-c0da-4988-816a-0ae51e6507fb" />
 <img width="500" height="500" alt="Screenshot 2026-03-24 203019" src="https://github.com/user-attachments/assets/485bbbae-e559-406f-9206-7036dc70f720" />
 
